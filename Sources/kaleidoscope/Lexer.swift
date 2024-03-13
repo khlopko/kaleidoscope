@@ -12,7 +12,6 @@ enum Token {
     case unknown(Character)
 }
 
-
 struct Lexer {
     var identifierStr: String?
     var numVal: Double?
