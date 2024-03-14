@@ -4,8 +4,10 @@
 @main
 struct App {
     static func main() {
-        var lexer = Lexer()
-        print(lexer.getTok(), lexer.identifierStr, lexer.numVal)
+        let lexer = Lexer()
+        let parser = Parser(lexer: lexer)
+        var driver = Driver(parser: parser)
+        driver.mainLoop()
     }
 }
 

@@ -36,7 +36,7 @@ struct FunctionAST {
 }
 
 struct Parser {
-    private var currTok: Token?
+    private(set) var currTok: Token?
     private var lexer: Lexer
     private let precedence: [Character: UInt8] = [
         "<": 10,
@@ -45,7 +45,7 @@ struct Parser {
         "*": 40,
     ]
 
-    init(lexer: Lexer) {
+    init(lexer: consuming Lexer) {
         self.lexer = lexer
     }
 
@@ -65,7 +65,7 @@ struct Parser {
         case .unknown("("):
             return parseParenExpr()
         default: 
-            return logErr("unknown token when expecting an expression")
+            return logErr("unknown token '\(currTok)' when expecting an expression")
         }
     }
 
@@ -102,7 +102,44 @@ struct Parser {
         }
         let fnName = lexer.identifierStr!
         getNextToken()
-        fatalError("Not complete")
+        guard case .unknown("(") = currTok else {
+            return logErrP("Expected '(' in prototype")
+        }
+        var argNames: [String] = []
+        getNextToken()
+        while case .identifier = currTok {
+            argNames.append(lexer.identifierStr!)
+            getNextToken()
+        }
+        guard case .unknown(")") = currTok else {
+            return logErrP("Expected ')' in prototype")
+        }
+        getNextToken()
+        return PrototypeAST(name: fnName, args: argNames)
+    }
+
+    mutating func parseDefinition() -> FunctionAST? {
+        getNextToken()
+        guard let proto = parsePrototype() else {
+            return nil
+        }
+        guard let e = parseExpr() else {
+            return nil
+        }
+        return FunctionAST(proto: proto, body: e)
+    }
+
+    mutating func parseExtern() -> PrototypeAST? {
+        getNextToken()
+        return parsePrototype()
+    }
+
+    mutating func parseTopLevelExpr() -> FunctionAST? {
+        guard let e = parseExpr() else {
+            return nil
+        }
+        let proto = PrototypeAST(name: "", args: [])
+        return FunctionAST(proto: proto, body: e)
     }
 
     private mutating func parseNumberExpr() -> any ExprAST {
@@ -156,6 +193,7 @@ struct Parser {
     }
 
     private func logErr(_ message: String) -> (any ExprAST)? {
+        let message = message + "\n"
         if let data = message.data(using: .ascii) {
             FileHandle.standardError.write(data)
         }
@@ -163,13 +201,14 @@ struct Parser {
     }
 
     private func logErrP(_ message: String) -> PrototypeAST? {
+        let message = message + "\n"
         if let data = message.data(using: .ascii) {
             FileHandle.standardError.write(data)
         }
         return nil
     }
 
-    private mutating func getNextToken() {
+    mutating func getNextToken() {
         currTok = lexer.getTok()
     }
 }
