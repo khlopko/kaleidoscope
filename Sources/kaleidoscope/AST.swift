@@ -2,14 +2,12 @@
 // see: https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl02.html
 
 import Foundation
-import cllvm
 
 protocol ExprAST {
 }
 
 struct NumberExprAST: ExprAST {
     let val: Double
-
 }
 
 struct VarExprAST: ExprAST {
@@ -67,7 +65,7 @@ struct Parser {
         case .unknown("("):
             return parseParenExpr()
         default: 
-            return logErr("unknown token '\(currTok)' when expecting an expression")
+            return logErr("unknown token '\(String(describing: currTok))' when expecting an expression")
         }
     }
 
