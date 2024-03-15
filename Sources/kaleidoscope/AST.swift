@@ -2,12 +2,14 @@
 // see: https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl02.html
 
 import Foundation
+import cllvm
 
 protocol ExprAST {
 }
 
 struct NumberExprAST: ExprAST {
     let val: Double
+
 }
 
 struct VarExprAST: ExprAST {

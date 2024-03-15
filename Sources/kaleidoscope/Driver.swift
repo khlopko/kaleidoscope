@@ -1,12 +1,15 @@
 // Driver implementation
 
 import Foundation
+import cllvm
 
 struct Driver {
     private var parser: Parser
+    private var codegen: Codegen
 
-    init(parser: consuming Parser) {
+    init(parser: consuming Parser, codegen: consuming Codegen) {
         self.parser = parser
+        self.codegen = codegen
     }
 
     mutating func mainLoop() {
@@ -33,26 +36,53 @@ struct Driver {
     }
 
     private mutating func handleDef() {
-        if parser.parseDefinition() != nil {
-            FileHandle.standardError.write("Parsed a function definition\n".data(using: .utf8)!)
+        if let ast = parser.parseDefinition() {
+            genFn(ast)
         } else {
             parser.getNextToken()
         }
     }
 
     private mutating func handleExtern() {
-        if parser.parseExtern() != nil {
-            FileHandle.standardError.write("Parsed an extern\n".data(using: .utf8)!)
+        if let ast = parser.parseExtern() {
+            genProto(ast)
         } else {
             parser.getNextToken()
         }
     }
 
     private mutating func handleTopLevelExpr() {
-        if parser.parseTopLevelExpr() != nil {
-            FileHandle.standardError.write("Parsed a top lever expr\n".data(using: .utf8)!)
+        if let ast = parser.parseTopLevelExpr() {
+            if let fn = genFn(ast) {
+                LLVMEraseGlobalIFunc(fn)
+            }
         } else {
             parser.getNextToken()
+        }
+    }
+
+    private mutating func genProto(_ ast: consuming PrototypeAST) {
+        if let fn = codegen.prototype(ast) {
+            printLLVMValue(fn)
+        }
+    }
+
+    @discardableResult
+    private mutating func genFn(_ ast: consuming FunctionAST) -> LLVMValueRef? {
+        guard let fn = codegen.function(ast) else {
+            return nil
+        }
+        printLLVMValue(fn)
+        return nil
+    }
+
+    private func printLLVMValue(_ value: LLVMValueRef) {
+        if let str = LLVMPrintValueToString(value) {
+            let data = String.init(cString: str).data(using: .utf8)!
+            FileHandle.standardError.write(data)
+            FileHandle.standardError.write("\n".data(using: .utf8)!)
+        } else {
+            FileHandle.standardError.write("Failed to print LLVM IR\n".data(using: .utf8)!)
         }
     }
 }
